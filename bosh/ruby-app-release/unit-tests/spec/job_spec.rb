@@ -14,7 +14,7 @@ describe 'ruby app main job:' do
     it 'raises error if control script is not put in the right directory inside the VM instance (check the job spec file for typos or misnaming!)' do
       right_dir = true
       begin 
-        job.template('bin/ctl')
+        job.template('bin/ctl') #tmp/ctl to bin/ctl
       rescue
         right_dir = false
       end
@@ -23,7 +23,6 @@ describe 'ruby app main job:' do
     end
 
     let(:template) { job.template('bin/ctl') }
-
     it 'raises error if empty bootstrap is provided' do
       expect {template.render({'bootstrap' => ''})}.to raise_error 'No bootstrap file provided'
     end
@@ -34,33 +33,32 @@ describe 'ruby app main job:' do
 
     it 'raises error if control script is malformed' do 
       tmps = template.render({'bootstrap' => 'app.rb'})
-      expect(tmps.lines[0]).to include ("#!/bin/bash")
+      expect(tmps.lines[0]).to include ("#!/bin/bash") # without it, it wouldn't know which interpreter to use
     end
     
     it 'raises error if exec command is malformed' do
-      tmps = template.render({'bootstrap' => 'app.rb' })
+      tmps = template.render({'bootstrap' => 'app.rb' }) #the command had the opposite if condition.
 
       exec_line = tmps.each_line do |line|
         line if line.include? 'bundle exec'
       end
-      
       expect(exec_line).to include('bundle exec ruby app.rb')
     end
 
-    it 'raises error if stop block is not defined' do 
+    it 'raises error if stop block is not defined' do  #include a stop block
       tmps = template.render({'bootstrap' => 'app.rb'})
       expect(find_statement(tmps, /^stop\)$/)).not_to eq(-1)
     end
 
     it 'raises error if main process is not killed inside the stop block' do
-      tmps = template.render({'bootstrap' => 'app.rb'})
+      tmps = template.render({'bootstrap' => 'app.rb'}) 
 
       stop_block_line = find_statement(tmps, /^stop\)$/)
-      kill_statement_line = find_statement(tmps, /kill\s-[\d]\s`cat\s\$PIDFILE`/)
+      kill_statement_line = find_statement(tmps, /kill\s-[\d]\s`cat\s\$PIDFILE`/) #USE ` instead of '
       expect(stop_block_line).to be < kill_statement_line
     end
 
-    it 'raises error if case blocks are not formed correctly' do
+    it 'raises error if case blocks are not formed correctly' do #Add an ending ;;
       tmps = template.render({'bootstrap' => 'app.rb'})
       expect(check_block_formations(tmps)).to be true 
     end
@@ -69,7 +67,7 @@ describe 'ruby app main job:' do
 
   describe 'config template' do 
 
-    it 'raises error if config template is not put in the right directory inside the VM instance' do
+    it 'raises error if config template is not put in the right directory inside the VM instance' do #from tmp/config.yml to cfg/config.yml
       right_dir = true
       begin 
         job.template('cfg/config.yml')
@@ -83,15 +81,15 @@ describe 'ruby app main job:' do
     let(:conf_template) {job.template('cfg/config.yml')}
 
     it 'raises error if configs are wrong' do
-      expect {conf_template.render('port' => 1024)}.to raise_error 'Invalid port number'
-      expect {conf_template.render('port' => 7999)}.to raise_error 'Invalid port number'
-      expect {conf_template.render('port' => 8080)}.not_to raise_error 
+      expect {conf_template.render({'port' => 1024})}.to raise_error 'Invalid port number'
+      expect {conf_template.render({'port' => 7999})}.to raise_error 'Invalid port number'
+      expect {conf_template.render({'port' => 8080})}.not_to raise_error 
     end
 
     it 'raises error if yml is not parsable or malformed' do 
       parsable = true
       begin
-        yml = YAML.load(conf_template.render('port' => 8080))
+        yml = YAML.load(conf_template.render({'port' => 8080}))
       rescue StandardError => e
         parsable = false
       end
